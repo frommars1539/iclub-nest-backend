@@ -14,59 +14,582 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id String @id @default(uuid())
-
-  email     String  @unique
-  hash      String
-  firstName String?
-  lastName  String?
-
-  bookmarks Bookmark[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum MembershipSource {
+  DERIVED
+  APPROVED
+  OPEN
 }
 
-model Bookmark {
-  id String @id @default(uuid())
-
-  title       String
-  description String?
-  link        String
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  DEPARTED
 }
 
-model Book {
-  id String @id @default(uuid())
-
-  title       String
-  description String?
-
-  authorId String
-  author   Author @relation(fields: [authorId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([authorId])
+enum AppointmentBasis {
+  ELECTED
+  APPOINTED
+  SECONDED
 }
 
-model Author {
-  id String @id @default(uuid())
+enum ActivityStatus {
+  SCHEDULED
+  CANCELLED
+}
 
-  name String
-  bio  String?
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
 
-  books Book[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum FinancialYearStatus {
+  OPEN
+  CLOSED
+}
+
+enum FlowDirection {
+  INCOME
+  EXPENDITURE
+}
+
+enum RecordKind {
+  DOCUMENT 
+  ASSET
+}
+
+enum DocType {
+  CONSTITUTION 
+  BUDGET 
+  AUDIT 
+  MINUTES 
+  BRAND_FILE 
+  OTHER 
+}
+
+enum RecordState {
+  ACTIVE 
+  LOST 
+  DISPOSED 
+  WRITTEN_OFF 
+}
+
+enum HandoverDisposition {
+  TRANSFERRED 
+  OUTSTANDING
+}
+
+enum CustodyEventType {
+  REGISTERED 
+  TRANSFERRED 
+  HANDED_OVER 
+  RECEIVED_LATE 
+  LOST 
+  DISPOSED 
+  WRITTEN_OFF 
+}
+
+model Club {
+  id               String           @id @default(uuid())
+  name             String
+  shortCode        String           @unique @map("short_code")
+  purpose          String?
+  foundingDate     DateTime?        @map("founding_date") @db.Date
+  institution      String?
+  membershipSource MembershipSource @default(DERIVED) @map("membership_source")
+  setupStatus      String           @map("setup_status") // TODO: make an enum once the PRD values are known
+  currency         String           @default("KES")
+
+  units     Unit[]
+  members   Member[]
+  terms     Term[]
+  positions Position[]
+  invitations Invitation[]
+  auditEntries AuditEntry[]
+  importReports ImportReport[]
+  activities Activity[]
+  activityTypes ActivityType[]
+  financialYears FinancialYear[]
+  duesSchedules DuesSchedule[]
+  recordItems RecordItem[]
+  handovers Handover[]
+
+
+  @@map("clubs")
+}
+
+model Unit {
+  id        String  @id @default(uuid())
+  clubId    String  @map("club_id")
+  name      String
+  typeLabel String? @map("type_label") // SRS FR-003: cohort, branch, section...
+  active    Boolean @default(true)      // SRS FR-003: deactivate, never delete
+
+  club      Club       @relation(fields: [clubId], references: [id])
+  members   Member[]
+  positions Position[]
+  activities Activity[]
+  duesSchedules DuesSchedule[]
+
+  @@index([clubId])
+  @@map("units")
+}
+
+model Member {
+  id           String       @id @default(uuid())
+  clubId       String       @map("club_id")
+  unitId       String?      @map("unit_id")
+  memberNumber String?      @map("member_number")
+  fullName     String       @map("full_name")
+  status       MemberStatus @default(ACTIVE)
+  contact      String?      // SRS FR-010: one contact channel
+  joinDate     DateTime?    @map("join_date") @db.Date // SRS FR-010
+
+  club    Club         @relation(fields: [clubId], references: [id])
+  unit    Unit?        @relation(fields: [unitId], references: [id])
+  account UserAccount?
+
+  appointmentsHeld Appointment[] @relation("AppointmentHolder")
+  appointmentsMade Appointment[] @relation("AppointmentAppointer")
+  attendanceRecords AttendanceMark[] @relation("AttendanceSubject")
+  attendanceMarked AttendanceMark[] @relation("AttendanceMarker")
+  attendanceAmended AttendanceAmendment[] @relation("AttendanceAmender")
+  invitations Invitation[]
+  events MemberEvent[]
+  ledgerEntriesPosted LedgerEntry[]
+  receiptsAdded ReceiptReference[] @relation("ReceiptAdder")
+  receiptVoided ReceiptReference[] @relation("ReceiptVoider")
+  duesPaid      DuesPayment[]      @relation("DuesPayer")
+  duesRecorded  DuesPayment[]      @relation("DuesRecorder")
+  handoversOut  Handover[]         @relation("HandoverOutgoing")
+  handoversIn   Handover[]         @relation("HandoverIncoming")
+  custodyActions CustodyEvent[]
+
+  @@unique([clubId, memberNumber]) // AC-010.2; NULLs are distinct in Postgres
+  @@index([clubId])
+  @@map("members")
+}
+
+model UserAccount {
+  id           String  @id @default(uuid())
+  memberId     String? @unique @map("member_id")
+  name         String
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+
+  member Member? @relation(fields: [memberId], references: [id])
+
+  auditEnries AuditEntry[]
+
+  @@map("user_accounts")
+}
+
+model Term {
+  id        String   @id @default(uuid())
+  clubId    String   @map("club_id")
+  name      String
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  club         Club          @relation(fields: [clubId], references: [id])
+  appointments Appointment[]
+  duesSchedule DuesSchedule[]
+
+  @@index([clubId])
+  @@map("terms")
+}
+
+model Position {
+  id               String  @id @default(uuid())
+  clubId           String  @map("club_id")
+  unitId           String? @map("unit_id")
+  name             String
+  requiredOffice   Boolean @default(false) @map("required_office") // guess: confirm against the PRD
+  inVerifiedRoster Boolean @default(false) @map("in_verified_roster")
+  accessLevel      String  @map("access_level") // guess: likely becomes an enum or a permission set
+  retired          Boolean @default(false)      // SRS FR-020
+  exclusive        Boolean @default(false)      // SRS BR-021.3
+
+  club         Club          @relation(fields: [clubId], references: [id])
+  unit         Unit?         @relation(fields: [unitId], references: [id])
+  appointments Appointment[]
+  activities   Activity[]
+  recordItems  RecordItem[]
+  handovers    Handover[]
+  custodyFrom  CustodyEvent[] @relation("CustodyFrom")
+  custodyTo    CustodyEvent[] @relation("CustodyTo")
+
+  @@index([clubId])
+  @@map("positions")
+}
+
+model Appointment {
+  id          String           @id @default(uuid())
+  positionId  String           @map("position_id")
+  memberId    String           @map("member_id")
+  termId      String           @map("term_id")
+  appointedBy String           @map("appointed_by")
+  appointedAt DateTime         @default(now()) @map("appointed_at")
+  endedAt     DateTime?        @map("ended_at")
+  basis       AppointmentBasis // SRS FR-021 IN-021.5
+  endReason   String?          @map("end_reason") // SRS AC-021.4
+
+  position  Position @relation(fields: [positionId], references: [id])
+  member    Member   @relation("AppointmentHolder", fields: [memberId], references: [id])
+  appointer Member   @relation("AppointmentAppointer", fields: [appointedBy], references: [id])
+  term      Term     @relation(fields: [termId], references: [id])
+
+  @@index([positionId, termId])
+  @@index([memberId])
+  @@map("appointments")
+}
+
+model Invitation {
+  tokenHash String   @id @map("token_hash") // store a hash of the token, never the raw token
+  clubId    String   @map("club_id")
+  memberId  String   @map("member_id")
+  email     String
+  expiresAt DateTime @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at") // null = not used yet
+
+  club   Club   @relation(fields: [clubId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([clubId])
+  @@index([memberId])
+  @@map("invitations")
+}
+
+model AuditEntry {
+  id          String   @id @default(uuid())
+  clubId      String   @map("club_id")
+  actorUserId String?  @map("actor_user_id") // null for system events, e.g. a term ending
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  requestId   String?  @map("request_id")    // SRS 5.3: ties an entry to the request's logs
+  at          DateTime @default(now())
+
+  club      Club         @relation(fields: [clubId], references: [id])
+  actorUser UserAccount? @relation(fields: [actorUserId], references: [id])
+
+  @@index([clubId, at])
+  @@index([entityType, entityId])
+  @@map("audit_entries")
+}
+
+model MemberEvent {
+  id       String   @id @default(uuid())
+  memberId String   @map("member_id")
+  actor    String
+  text     String
+  at       DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([memberId])
+  @@map("member_events")
+}
+
+model ImportReport {
+  id        String   @id @default(uuid())
+  clubId    String   @map("club_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at") // BR-012.3: dry-run reports expire after 24 hours
+  status    String                      // TODO: make an enum once the PRD values are known
+  totalRows Int      @map("total_rows")
+
+  club Club @relation(fields: [clubId], references: [id])
+
+  @@index([clubId])
+  @@map("import_reports")
+}
+
+model Activity {
+  id           String         @id @default(uuid())
+  clubId       String         @map("club_id")
+  unitId       String?        @map("unit_id")
+  name         String
+  typeId       String?        @map("type_id")
+  responsiblePositionId       String       @map("responsible_position_id")
+  startsAt     DateTime       @map("starts_at")
+  endsAt       DateTime       @map("ends_at")
+  location     String?
+  status       ActivityStatus @default(SCHEDULED)
+  cancelReason String?        @map("cancel_reason")
+
+  club   Club               @relation(fields: [clubId], references: [id])
+  unit   Unit?              @relation(fields: [unitId], references: [id])
+  type   ActivityType?      @relation(fields: [typeId], references: [id])
+  responsiblePosition   Position   @relation(fields: [responsiblePositionId], references: [id])
+  marks  AttendanceMark[]
+  events ActivityEvent[]
+
+  @@index([clubId, startsAt])
+  @@map("activities")
+}
+
+model AttendanceMark {
+  id         String           @id @default(uuid())
+  activityId String           @map("activity_id")
+  memberId   String           @map("member_id")
+  status     AttendanceStatus
+  markedBy   String           @map("marked_by")
+  markedAt   DateTime         @default(now()) @map("marked_at")
+
+  activity Activity @relation(fields: [activityId], references: [id])
+  member   Member   @relation("AttendanceSubject", fields: [memberId], references: [id])
+  marker   Member   @relation("AttendanceMarker", fields: [markedBy], references: [id])
+  amendments AttendanceAmendment[]
+
+  @@unique([activityId, memberId]) // one mark per member per activity
+  @@index([memberId])
+  @@map("attendance_marks")
+}
+
+model ActivityEvent {
+  id         String   @id @default(uuid())
+  activityId String   @map("activity_id")
+  actor      String
+  text       String
+  at         DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id])
+
+  @@index([activityId])
+  @@map("activity_events")
+}
+
+model ActivityType {
+  id     String  @id @default(uuid())
+  clubId String  @map("club_id")
+  name   String
+  active Boolean @default(true) // deactivate rather than delete, like units
+
+  club       Club       @relation(fields: [clubId], references: [id])
+  activities Activity[]
+
+  @@unique([clubId, name]) // a club can't have two types with the same name
+  @@map("activity_types")
+}
+
+model AttendanceAmendment {
+  id             String           @id @default(uuid())
+  markId         String           @map("mark_id")
+  previousStatus AttendanceStatus @map("previous_status")
+  newStatus      AttendanceStatus @map("new_status")
+  amendedBy      String           @map("amended_by")
+  reason         String
+  at             DateTime         @default(now())
+
+  mark    AttendanceMark @relation(fields: [markId], references: [id])
+  amender Member         @relation("AttendanceAmender", fields: [amendedBy], references: [id])
+
+  @@index([markId])
+  @@map("attendance_amendments")
+}
+
+model FinancialYear {
+  id                  String              @id @default(uuid())
+  clubId              String              @map("club_id")
+  name                String
+  startDate           DateTime            @map("start_date") @db.Date
+  endDate             DateTime            @map("end_date") @db.Date
+  status              FinancialYearStatus @default(OPEN)
+  openingBalanceMinor Int                 @default(0) @map("opening_balance_minor") // SRS FR-045 needs an opening balance
+
+  club        Club          @relation(fields: [clubId], references: [id])
+  budgetLines BudgetLine[]
+  entries     LedgerEntry[]
+
+  @@index([clubId])
+  @@map("financial_years")
+}
+
+model BudgetLine {
+  id           String        @id @default(uuid())
+  yearId       String        @map("year_id")
+  name         String
+  category     String
+  direction    FlowDirection
+  plannedMinor Int           @map("planned_minor")
+
+  year    FinancialYear @relation(fields: [yearId], references: [id])
+  entries LedgerEntry[]
+
+  // Lets LedgerEntry reference (id, year, direction) as one unit. See "design notes".
+  @@unique([id, yearId, direction])
+  @@index([yearId])
+  @@map("budget_lines")
+}
+
+model LedgerEntry {
+  id              String        @id @default(uuid())
+  yearId          String        @map("year_id")
+  budgetLineId    String        @map("budget_line_id")
+  direction       FlowDirection
+  amountMinor     Int           @map("amount_minor")
+  currency        String
+  entryDate       DateTime      @map("entry_date") @db.Date
+  counterparty    String
+  description     String
+  reversesEntryId String?       @map("reverses_entry_id")
+  postedBy        String        @map("posted_by")
+  postedAt        DateTime      @default(now()) @map("posted_at")
+
+  year       FinancialYear @relation(fields: [yearId], references: [id])
+  budgetLine BudgetLine    @relation(fields: [budgetLineId, yearId, direction], references: [id, yearId, direction])
+  reverses   LedgerEntry?  @relation("EntryReversal", fields: [reversesEntryId], references: [id])
+  reversals  LedgerEntry[] @relation("EntryReversal")
+  poster     Member        @relation(fields: [postedBy], references: [id])
+  receipts   ReceiptReference[]
+  duesPayment DuesPayment?
+
+  @@index([yearId, entryDate])
+  @@index([budgetLineId])
+  @@map("ledger_entries")
+}
+
+model ReceiptReference {
+  id        String   @id @default(uuid())
+  entryId   String   @map("entry_id")
+  reference String   // a document number, transaction ref or location; never a file
+  addedBy   String   @map("added_by")
+  addedAt   DateTime @default(now()) @map("added_at")
+  voidedAt  DateTime? @map("voided_at")
+  voidedBy  String?   @map("voided_by")
+  voidReason String?  @map("void_reason")
+
+  entry LedgerEntry @relation(fields: [entryId], references: [id])
+  adder Member @relation("ReceiptAdder", fields: [addedBy], references: [id])
+  voider Member? @relation("ReceiptVoider", fields: [voidedBy], references: [id])
+
+  @@index([entryId])
+  @@map("receipt_references")
+}
+
+model DuesSchedule {
+  id          String  @id @default(uuid())
+  clubId      String  @map("club_id")
+  termId      String  @map("term_id")
+  unitId      String? @map("unit_id") // null = dues for the whole club
+  amountMinor Int     @map("amount_minor")
+
+  club     Club          @relation(fields: [clubId], references: [id])
+  term     Term          @relation(fields: [termId], references: [id])
+  unit     Unit?         @relation(fields: [unitId], references: [id])
+  payments DuesPayment[]
+
+  @@index([clubId])
+  @@index([termId])
+  @@map("dues_schedules")
+}
+
+model DuesPayment {
+  id            String   @id @default(uuid())
+  scheduleId    String   @map("schedule_id")
+  memberId      String   @map("member_id")
+  ledgerEntryId String   @unique @map("ledger_entry_id") // one ledger entry per instalment
+  recordedBy    String   @map("recorded_by")
+  recordedAt    DateTime @default(now()) @map("recorded_at")
+
+  schedule    DuesSchedule @relation(fields: [scheduleId], references: [id])
+  member      Member       @relation("DuesPayer", fields: [memberId], references: [id])
+  recorder    Member       @relation("DuesRecorder", fields: [recordedBy], references: [id])
+  ledgerEntry LedgerEntry  @relation(fields: [ledgerEntryId], references: [id])
+
+  @@index([scheduleId, memberId])
+  @@index([memberId])
+  @@map("dues_payments")
+}
+
+model RecordItem {
+  id              String      @id @default(uuid())
+  clubId          String      @map("club_id")
+  positionId      String      @map("position_id") // the holding office
+  kind            RecordKind
+  name            String
+  description     String?                         // assets (SRS FR-051)
+  docType         DocType?    @map("doc_type")    // documents only
+  period          String?                         // documents, e.g. "2025/26"
+  mark            String?                         // assets: identifying mark or account handle, never a credential
+  location        String                          // where it is kept; a reference, never the file
+  state           RecordState @default(ACTIVE)
+  versionLabel    String?     @map("version_label") // constitution versions (FR-005)
+  adoptedOn       DateTime?   @map("adopted_on") @db.Date
+  isCurrent       Boolean     @default(false) @map("is_current")
+  outstandingNote String?     @map("outstanding_note") // set = outstanding at handover (FR-027)
+
+  club          Club           @relation(fields: [clubId], references: [id])
+  position      Position       @relation(fields: [positionId], references: [id])
+  custodyEvents CustodyEvent[]
+  handoverItems HandoverItem[]
+
+  @@index([clubId, kind])
+  @@index([positionId])
+  @@map("record_items")
+}
+
+model Handover {
+  id                    String    @id @default(uuid())
+  clubId                String    @map("club_id")
+  positionId            String    @map("position_id")
+  outgoingMemberId      String    @map("outgoing_member_id")
+  incomingMemberId      String    @map("incoming_member_id")
+  openedAt              DateTime  @default(now()) @map("opened_at")
+  outgoingConfirmedAt   DateTime? @map("outgoing_confirmed_at")
+  incomingConfirmedAt   DateTime? @map("incoming_confirmed_at")
+  closedAt              DateTime? @map("closed_at")
+  escalatedAt           DateTime? @map("escalated_at")             // BR-024.4: unconfirmed after 30 days
+  outgoingReceiptSentAt DateTime? @map("outgoing_receipt_sent_at") // ERR-024.3: retry until set
+  incomingReceiptSentAt DateTime? @map("incoming_receipt_sent_at")
+
+  club          Club           @relation(fields: [clubId], references: [id])
+  position      Position       @relation(fields: [positionId], references: [id])
+  outgoing      Member         @relation("HandoverOutgoing", fields: [outgoingMemberId], references: [id])
+  incoming      Member         @relation("HandoverIncoming", fields: [incomingMemberId], references: [id])
+  items         HandoverItem[]
+  custodyEvents CustodyEvent[]
+
+  @@index([clubId])
+  @@index([positionId])
+  @@map("handovers")
+}
+
+model HandoverItem {
+  id          String               @id @default(uuid())
+  handoverId  String               @map("handover_id")
+  recordId    String               @map("record_id")
+  disposition HandoverDisposition? // null = not marked yet; a handover cannot close with any null
+  note        String?              // required when OUTSTANDING
+
+  handover Handover   @relation(fields: [handoverId], references: [id])
+  record   RecordItem @relation(fields: [recordId], references: [id])
+
+  @@unique([handoverId, recordId])
+  @@index([recordId])
+  @@map("handover_items")
+}
+
+model CustodyEvent {
+  id             String           @id @default(uuid())
+  recordId       String           @map("record_id")
+  fromPositionId String?          @map("from_position_id") // null only when first registered
+  toPositionId   String           @map("to_position_id")
+  handoverId     String?          @map("handover_id")
+  eventType      CustodyEventType @map("event_type")
+  reason         String
+  actorId        String           @map("actor_id")
+  at             DateTime         @default(now())
+
+  record       RecordItem @relation(fields: [recordId], references: [id])
+  fromPosition Position?  @relation("CustodyFrom", fields: [fromPositionId], references: [id])
+  toPosition   Position   @relation("CustodyTo", fields: [toPositionId], references: [id])
+  handover     Handover?  @relation(fields: [handoverId], references: [id])
+  actor        Member     @relation(fields: [actorId], references: [id])
+
+  @@index([recordId, at])
+  @@index([handoverId])
+  @@map("custody_events")
 }
