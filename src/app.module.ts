@@ -1,18 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import {
   type EnvironmentVariables,
   validateEnv,
 } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
-import { SupabaseModule } from './modules/supabase/supabase.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
-
 
 @Module({
   imports: [
@@ -31,14 +30,14 @@ import { PrismaModule } from './prisma/prisma.module';
       ],
     }),
     PrismaModule,
-    SupabaseModule,
     HealthModule,
     AuthModule,
     UsersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
   ],
 })
 export class AppModule {}

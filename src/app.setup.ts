@@ -9,6 +9,7 @@ import {
   type EnvironmentVariables,
   isSwaggerEnabled,
 } from './config/env.validation';
+import { requestId } from './common/middleware/request-id';
 
 /** Static assets (logo, favicon). Resolves to <repo>/public from both src/ and dist/. */
 export const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -25,7 +26,7 @@ export function configureApp(app: NestExpressApplication) {
   if (config.get('TRUST_PROXY', { infer: true })) {
     app.set('trust proxy', 1);
   }
-
+  app.use(requestId);
   app.use(helmet());
 
   const origins = (config.get('CORS_ORIGINS', { infer: true }) ?? '')
