@@ -36,6 +36,12 @@ openingBalanceMinor is an addition. FR-045’s report starts from an opening bal
 Money is Int. That holds up to about 2.1 billion minor units, roughly 21 million shillings if minor units are cents. Fine for a club. If your pilot disagrees, we’d switch to BigInt, which needs extra care when sending JSON.
 
 
-
+What I couldn’t verify, and the design choices
+How Prisma 7’s pg adapter formats a database error. The mapper looks for our trigger text anywhere in the error’s message or cause, so it should work in any case, but I haven’t seen a real one. We’ll prove it with a real insert once the first module exists, and adjust if needed.
+A partial unique index violation (like the one-holder rule) may arrive as a plain P2002 without the index name. In that case it falls to a generic CONFLICT. When we write the appointment service, it will check first and throw POSITION_OCCUPIED explicitly; the index stays as the safety net.
+I added a details field to the validation error (a list of field messages). The SRS shape has only code and message, but AC-001.2 asks for field-level messages, so it’s a small extension. Note it in the SRS.
+The request ID is returned in the x-request-id header only, not in the error body.
+Swagger will still document responses unwrapped. Not a problem now.
+Not done yet: structured JSON logging without personal data (NFR-050). That’s its own small feature later.
 
 

@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
-  IsOptional,
+  IsNotEmpty,
   IsString,
   MaxLength,
   MinLength,
@@ -21,13 +21,8 @@ export class SignUpDto {
   @MaxLength(128)
   password: string;
 
-  @IsOptional()
   @IsString()
-  @MaxLength(50)
-  firstName?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  lastName?: string;
+  @IsNotEmpty()
+  @MaxLength(100)
+  name: string;
 }

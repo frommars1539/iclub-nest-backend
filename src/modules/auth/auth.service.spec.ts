@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 describe('AuthService', () => {
   let service: AuthService;
   const prisma = {
-    user: { create: jest.fn(), findUnique: jest.fn() },
+    userAccount: { create: jest.fn(), findUnique: jest.fn() },
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed.jwt.token') };
 
@@ -27,20 +27,20 @@ describe('AuthService', () => {
 
   describe('signUp', () => {
     it('stores an argon2 hash, never the plain password', async () => {
-      prisma.user.create.mockImplementation(({ data }) => ({
+      prisma.userAccount.create.mockImplementation(({ data }) => ({
         id: 'u1',
         email: data.email,
       }));
+ await service.signUp({ email: 'a@b.co', password: 'supersecret', name: 'Alex' });
+     
 
-      await service.signUp({ email: 'a@b.co', password: 'supersecret' });
-
-      const { data } = prisma.user.create.mock.calls[0][0];
+      const { data } = prisma.userAccount.create.mock.calls[0][0];
       expect(data).not.toHaveProperty('password');
-      expect(await argon.verify(data.hash, 'supersecret')).toBe(true);
+      expect(await argon.verify(data.passwordHash, 'supersecret')).toBe(true);
     });
 
     it('throws ConflictException when the email is taken', async () => {
-      prisma.user.create.mockRejectedValue(
+      prisma.userAccount.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('Unique constraint', {
           code: 'P2002',
           clientVersion: 'test',
@@ -48,17 +48,17 @@ describe('AuthService', () => {
       );
 
       await expect(
-        service.signUp({ email: 'a@b.co', password: 'supersecret' }),
+        service.signUp({ email: 'a@b.co', password: 'supersecret', name: 'Alex' }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 
   describe('signIn', () => {
     it('returns an access token for valid credentials', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      prisma.userAccount.findUnique.mockResolvedValue({
         id: 'u1',
         email: 'a@b.co',
-        hash: await argon.hash('supersecret'),
+        passwordHash: await argon.hash('supersecret'),
       });
 
       await expect(
@@ -71,7 +71,7 @@ describe('AuthService', () => {
     });
 
     it('rejects an unknown email', async () => {
-      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.userAccount.findUnique.mockResolvedValue(null);
 
       await expect(
         service.signIn({ email: 'a@b.co', password: 'supersecret' }),
@@ -79,10 +79,10 @@ describe('AuthService', () => {
     });
 
     it('rejects a wrong password', async () => {
-      prisma.user.findUnique.mockResolvedValue({
+      prisma.userAccount.findUnique.mockResolvedValue({
         id: 'u1',
         email: 'a@b.co',
-        hash: await argon.hash('supersecret'),
+        passwordHash: await argon.hash('supersecret'),
       });
 
       await expect(

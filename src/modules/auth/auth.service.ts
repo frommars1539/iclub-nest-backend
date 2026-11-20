@@ -18,12 +18,17 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
+  /**
+   * TEMPORARY bridge so the build is green. It creates an account with no
+   * member and therefore no club. Step 4 replaces it with club registration
+   * (FR-001) and invitation acceptance.
+   */
   async signUp({ password, ...profile }: SignUpDto) {
-    const hash = await argon.hash(password);
+    const passwordHash = await argon.hash(password);
 
     try {
-      return await this.prisma.user.create({
-        data: { ...profile, hash },
+      return await this.prisma.userAccount.create({
+        data: { ...profile, passwordHash },
         select: publicUserSelect,
       });
     } catch (error) {
@@ -38,14 +43,17 @@ export class AuthService {
   }
 
   async signIn({ email, password }: SignInDto) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const account = await this.prisma.userAccount.findUnique({
+      where: { email },
+    });
 
-    // Same error for unknown email and wrong password, to avoid account enumeration.
-    if (!user || !(await argon.verify(user.hash, password))) {
+    // Same error for unknown email and wrong password, to avoid account
+    // enumeration. (Timing still differs; step 3 fixes that.)
+    if (!account || !(await argon.verify(account.passwordHash, password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.signToken({ sub: user.id, email: user.email });
+    return this.signToken({ sub: account.id, email: account.email });
   }
 
   private async signToken(payload: JwtPayload) {

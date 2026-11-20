@@ -93,14 +93,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
         case 'P2025':
           return {
             status: HttpStatus.NOT_FOUND,
-            error: { code: ErrorCode.NOT_FOUND, message: 'The record was not found.' },
+            error: {
+              code: ErrorCode.NOT_FOUND,
+              message: 'The record was not found.',
+            },
           };
         case 'P2003':
           return {
             status: HttpStatus.CONFLICT,
             error: {
               code: ErrorCode.CONFLICT,
-              message: 'The record refers to something that does not exist, or is still in use.',
+              message:
+                'The record refers to something that does not exist, or is still in use.',
             },
           };
       }
@@ -112,22 +116,34 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
   }
 
-  private fromHttpException(exception: HttpException): { status: number; error: ErrorBody } {
+  private fromHttpException(exception: HttpException): {
+    status: number;
+    error: ErrorBody;
+  } {
     const status = exception.getStatus();
     const response = exception.getResponse();
     const raw =
-      typeof response === 'string' ? response : (response as { message?: unknown }).message;
+      typeof response === 'string'
+        ? response
+        : (response as { message?: unknown }).message;
 
     // class-validator failures arrive as a 400 with an array of messages.
     if (status === HttpStatus.BAD_REQUEST && Array.isArray(raw)) {
       return {
         status,
-        error: { code: ErrorCode.VALIDATION_FAILED, message: 'Validation failed.', details: raw },
+        error: {
+          code: ErrorCode.VALIDATION_FAILED,
+          message: 'Validation failed.',
+          details: raw,
+        },
       };
     }
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      return { status, error: { code: ErrorCode.INTERNAL_ERROR, message: GENERIC_500 } };
+      return {
+        status,
+        error: { code: ErrorCode.INTERNAL_ERROR, message: GENERIC_500 },
+      };
     }
 
     return {
@@ -142,7 +158,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
   /** Message plus cause message, so a wrapped database error is still recognised. */
   private textOf(exception: unknown): string {
     if (!(exception instanceof Error)) return '';
-    const cause = exception.cause instanceof Error ? exception.cause.message : '';
+    const cause =
+      exception.cause instanceof Error ? exception.cause.message : '';
     return `${exception.message} ${cause}`;
   }
 }

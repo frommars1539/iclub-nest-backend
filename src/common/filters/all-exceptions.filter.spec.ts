@@ -51,7 +51,9 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('turns validation failures into VALIDATION_FAILED with details', () => {
-    const { status, body } = run(new BadRequestException(['email must be an email']));
+    const { status, body } = run(
+      new BadRequestException(['email must be an email']),
+    );
     expect(status).toBe(400);
     expect(body.error.code).toBe('VALIDATION_FAILED');
     expect(body.error.details).toEqual(['email must be an email']);
@@ -60,7 +62,10 @@ describe('AllExceptionsFilter', () => {
   it('maps a not-found exception', () => {
     const { status, body } = run(new NotFoundException('No such member'));
     expect(status).toBe(404);
-    expect(body.error).toEqual({ code: 'NOT_FOUND', message: 'No such member' });
+    expect(body.error).toEqual({
+      code: 'NOT_FOUND',
+      message: 'No such member',
+    });
   });
 
   it('recognises a database trigger message', () => {

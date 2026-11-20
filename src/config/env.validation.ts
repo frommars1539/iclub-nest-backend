@@ -7,11 +7,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   Max,
   Min,
   MinLength,
-  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -39,17 +37,7 @@ export class EnvironmentVariables {
   PORT: number = 4000;
 
   @IsString()
-  @IsNotEmpty()
-  DATABASE_URL: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @ValidateIf(
-    (env: EnvironmentVariables) => env.NODE_ENV === Environment.Production,
-  )
-  @MinLength(32, {
-    message: 'JWT_SECRET must be at least 32 characters in production',
-  })
+  @MinLength(32, { message: 'JWT_SECRET must be at least 32 characters' })
   JWT_SECRET: string;
 
   /** Any value accepted by `jsonwebtoken` / `ms`, e.g. `15m`, `1h`, `7d`. */
@@ -83,13 +71,9 @@ export class EnvironmentVariables {
   @Min(1)
   THROTTLE_LIMIT: number = 100;
 
-  @IsOptional()
-  @IsUrl({ require_tld: false })
-  SUPABASE_URL?: string;
-
-  @IsOptional()
   @IsString()
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  @IsNotEmpty()
+  DATABASE_URL: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

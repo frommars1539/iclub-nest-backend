@@ -6,6 +6,7 @@ import type { EnvironmentVariables } from '../../../config/env.validation';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { publicUserSelect, type PublicUser } from '../../users/users.select';
 
+/** Identity only. Permissions are never in the token (SRS FR-022/023). */
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -24,13 +25,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  /** The return value is attached to `request.user`. */
+  /**
+   * Passport calls this only after the signature and expiry check out.
+   * The return value is attached to `request.user`. Because it runs on
+   * every request, this is where step 6 will load the current-term positions.
+   */
   async validate(payload: JwtPayload): Promise<PublicUser> {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.userAccount.findUnique({
       where: { id: payload.sub },
       select: publicUserSelect,
     });
-    // Token is valid but the user has since been deleted.
+    // Token is valid but the account no longer exists.
     if (!user) throw new UnauthorizedException();
     return user;
   }
