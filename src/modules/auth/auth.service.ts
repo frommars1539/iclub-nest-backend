@@ -4,11 +4,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as argon from 'argon2';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { publicUserSelect } from '../users/users.select';
 import { SignInDto, SignUpDto } from './dto';
+import { PasswordService } from './password.service';
 import type { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
@@ -16,6 +16,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly passwords: PasswordService,
   ) {}
 
   /**
@@ -24,7 +25,7 @@ export class AuthService {
    * (FR-001) and invitation acceptance.
    */
   async signUp({ password, ...profile }: SignUpDto) {
-    const passwordHash = await argon.hash(password);
+    const passwordHash = await this.passwords.hash(password);
 
     try {
       return await this.prisma.userAccount.create({
@@ -49,7 +50,10 @@ export class AuthService {
 
     // Same error for unknown email and wrong password, to avoid account
     // enumeration. (Timing still differs; step 3 fixes that.)
-    if (!account || !(await argon.verify(account.passwordHash, password))) {
+    if (
+      !account ||
+      !(await this.passwords.verify(account.passwordHash, password))
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

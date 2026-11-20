@@ -5,6 +5,7 @@ import * as argon from 'argon2';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { PasswordService } from './password.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -20,6 +21,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwt },
+        PasswordService,
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -31,8 +33,11 @@ describe('AuthService', () => {
         id: 'u1',
         email: data.email,
       }));
- await service.signUp({ email: 'a@b.co', password: 'supersecret', name: 'Alex' });
-     
+      await service.signUp({
+        email: 'a@b.co',
+        password: 'supersecret',
+        name: 'Alex',
+      });
 
       const { data } = prisma.userAccount.create.mock.calls[0][0];
       expect(data).not.toHaveProperty('password');
@@ -48,7 +53,11 @@ describe('AuthService', () => {
       );
 
       await expect(
-        service.signUp({ email: 'a@b.co', password: 'supersecret', name: 'Alex' }),
+        service.signUp({
+          email: 'a@b.co',
+          password: 'supersecret',
+          name: 'Alex',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
   });
