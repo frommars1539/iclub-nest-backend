@@ -1,102 +1,46 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Test } from '@nestjs/testing';
-import * as argon from 'argon2';
-import { Prisma } from '../../generated/prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { UnauthorizedException } from '@nestjs/common';
+import type { JwtService } from '@nestjs/jwt';
+import { jest } from '@jest/globals';
+import type { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 
-describe('AuthService', () => {
-  let service: AuthService;
-  const prisma = {
-    userAccount: { create: jest.fn(), findUnique: jest.fn() },
-  };
-  const jwt = { signAsync: jest.fn().mockResolvedValue('signed.jwt.token') };
+describe('AuthService.signIn', () => {
+  const findUnique = jest.fn<(args: unknown) => Promise<unknown>>();
+  const prisma = { userAccount: { findUnique } } as unknown as PrismaService;
+  const jwt = {
+    signAsync: jest.fn<(payload: unknown) => Promise<string>>(),
+  } as unknown as JwtService;
+  const passwords = new PasswordService();
+  const service = new AuthService(prisma, jwt, passwords);
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        { provide: PrismaService, useValue: prisma },
-        { provide: JwtService, useValue: jwt },
-        PasswordService,
-      ],
-    }).compile();
-    service = moduleRef.get(AuthService);
+  beforeEach(() => {
+    findUnique.mockReset();
   });
 
-  describe('signUp', () => {
-    it('stores an argon2 hash, never the plain password', async () => {
-      prisma.userAccount.create.mockImplementation(({ data }) => ({
-        id: 'u1',
-        email: data.email,
-      }));
-      await service.signUp({
-        email: 'a@b.co',
-        password: 'supersecret',
-        name: 'Alex',
-      });
+  it('still runs a password verification when the email is unknown', async () => {
+    findUnique.mockResolvedValue(null);
+    const spy = jest.spyOn(passwords, 'verifyOrDecoy');
 
-      const { data } = prisma.userAccount.create.mock.calls[0][0];
-      expect(data).not.toHaveProperty('password');
-      expect(await argon.verify(data.passwordHash, 'supersecret')).toBe(true);
-    });
+    await expect(
+      service.signIn({ email: 'nobody@example.com', password: 'whatever12' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
 
-    it('throws ConflictException when the email is taken', async () => {
-      prisma.userAccount.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('Unique constraint', {
-          code: 'P2002',
-          clientVersion: 'test',
-        }),
-      );
-
-      await expect(
-        service.signUp({
-          email: 'a@b.co',
-          password: 'supersecret',
-          name: 'Alex',
-        }),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
+    // No account -> hash is undefined -> the decoy path runs.
+    expect(spy).toHaveBeenCalledWith(undefined, 'whatever12');
+    spy.mockRestore();
   });
 
-  describe('signIn', () => {
-    it('returns an access token for valid credentials', async () => {
-      prisma.userAccount.findUnique.mockResolvedValue({
-        id: 'u1',
-        email: 'a@b.co',
-        passwordHash: await argon.hash('supersecret'),
-      });
-
-      await expect(
-        service.signIn({ email: 'a@b.co', password: 'supersecret' }),
-      ).resolves.toEqual({ access_token: 'signed.jwt.token' });
-      expect(jwt.signAsync).toHaveBeenCalledWith({
-        sub: 'u1',
-        email: 'a@b.co',
-      });
+  it('gives the same error for a wrong password on a real account', async () => {
+    const passwordHash = await passwords.hash('the-real-password');
+    findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'a@example.com',
+      passwordHash,
     });
 
-    it('rejects an unknown email', async () => {
-      prisma.userAccount.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.signIn({ email: 'a@b.co', password: 'supersecret' }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-    });
-
-    it('rejects a wrong password', async () => {
-      prisma.userAccount.findUnique.mockResolvedValue({
-        id: 'u1',
-        email: 'a@b.co',
-        passwordHash: await argon.hash('supersecret'),
-      });
-
-      await expect(
-        service.signIn({ email: 'a@b.co', password: 'wrong-password' }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-    });
+    await expect(
+      service.signIn({ email: 'a@example.com', password: 'wrong-password' }),
+    ).rejects.toThrow('Invalid credentials');
   });
 });

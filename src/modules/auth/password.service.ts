@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import * as argon from 'argon2';
 
 /**
@@ -14,13 +15,34 @@ export const ARGON2_OPTIONS = {
 } as const;
 
 @Injectable()
-export class PasswordService {
+export class PasswordService implements OnModuleInit {
+  /** Hash of a random throwaway value, used to equalise sign-in timing. */
+  private decoyHash?: Promise<string>;
+
+  async onModuleInit(): Promise<void> {
+    await this.getDecoyHash();
+  }
+
   hash(password: string): Promise<string> {
     return argon.hash(password, ARGON2_OPTIONS);
   }
 
-  /** Params are read from the hash itself, so old hashes keep working. */
   verify(hash: string, password: string): Promise<boolean> {
     return argon.verify(hash, password);
+  }
+
+  async verifyOrDecoy(
+    hash: string | undefined,
+    password: string,
+  ): Promise<boolean> {
+    if (hash) return this.verify(hash, password);
+
+    await this.verify(await this.getDecoyHash(), password);
+    return false;
+  }
+
+  private getDecoyHash(): Promise<string> {
+    this.decoyHash ??= this.hash(randomBytes(32).toString('hex'));
+    return this.decoyHash;
   }
 }

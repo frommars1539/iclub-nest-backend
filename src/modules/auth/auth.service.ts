@@ -48,6 +48,15 @@ export class AuthService {
       where: { email },
     });
 
+    //Always run a full Argon2 verification, even when the email is unknown
+    //(it checks a decoy hash), so responsetime does not reveal which emails
+    // are registered. Same error either way.
+
+    const valid = await this.passwords.verifyOrDecoy(
+      account?.passwordHash,
+      password,
+    );
+
     // Same error for unknown email and wrong password, to avoid account
     // enumeration. (Timing still differs; step 3 fixes that.)
     if (
