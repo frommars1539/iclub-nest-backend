@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ClubsModule } from './modules/clubs/clubs.module';
 
 @Module({
   imports: [

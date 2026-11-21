@@ -20,9 +20,8 @@ export class AuthService {
   ) {}
 
   /**
-   * TEMPORARY bridge so the build is green. It creates an account with no
-   * member and therefore no club. Step 4 replaces it with club registration
-   * (FR-001) and invitation acceptance.
+   * Creates a club-less account. The club (and the account's member) come
+   * from POST /clubs, or from accepting an invitation (step 5).
    */
   async signUp({ password, ...profile }: SignUpDto) {
     const passwordHash = await this.passwords.hash(password);
