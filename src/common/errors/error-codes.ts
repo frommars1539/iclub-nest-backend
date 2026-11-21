@@ -55,6 +55,13 @@ export const ErrorCode = {
 
   // Tenant isolation
   CROSS_CLUB_REFERENCE: 'CROSS_CLUB_REFERENCE',
+
+  //Invitations
+  INVITATION_INVALID: 'INVITATION_INVALID',
+  INVITATION_EXPIRED: 'INVITATION_EXPIRED',
+  INVITATION_USED: 'INVITATION_USED',
+  MEMBER_HAS_ACCOUNT: 'MEMBER_HAS_ACCOUNT',
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

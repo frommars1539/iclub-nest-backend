@@ -7,11 +7,12 @@ import type { EnvironmentVariables } from '../../config/env.validation';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards';
+import { PasswordModule } from './password.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { PasswordService } from './password.service';
 
 @Module({
   imports: [
+    PasswordModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -30,7 +31,6 @@ import { PasswordService } from './password.service';
   controllers: [AuthController],
   providers: [
     AuthService,
-    PasswordService,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],

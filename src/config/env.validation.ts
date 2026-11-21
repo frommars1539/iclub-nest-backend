@@ -11,6 +11,7 @@ import {
   Min,
   MinLength,
   validateSync,
+  IsUrl,
 } from 'class-validator';
 
 export enum Environment {
@@ -74,6 +75,10 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   DATABASE_URL: string;
+
+  /** Where the frontend runs; invitation links point here */
+  @IsUrl({ require_tld: false })
+  APP_URL: string = 'http://localhost:3000';
 }
 
 export function validateEnv(config: Record<string, unknown>) {

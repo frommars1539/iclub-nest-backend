@@ -13,6 +13,7 @@ import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
+import { InvitationsModule } from './modules/invitations/invitations.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ClubsModule } from './modules/clubs/clubs.module';
     AuthModule,
     UsersModule,
     ClubsModule,
+    InvitationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
