@@ -34,6 +34,7 @@ import { ClubsModule } from './modules/clubs/clubs.module';
     HealthModule,
     AuthModule,
     UsersModule,
+    ClubsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
