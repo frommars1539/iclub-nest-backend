@@ -10,8 +10,10 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public } from '../../common/decorators';
+import { RequirePermission } from '../access/require-permission.decorator';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { INVITE_PERMISSION } from './invitation.constants';
 import { InvitationsService } from './invitations.service';
 
 @ApiTags('invitations')
@@ -20,6 +22,7 @@ export class InvitationsController {
   constructor(private readonly invitations: InvitationsService) {}
 
   @ApiBearerAuth()
+  @RequirePermission(INVITE_PERMISSION)
   @Post()
   create(
     @CurrentUser('id') accountId: string,

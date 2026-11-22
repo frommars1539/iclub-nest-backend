@@ -21,12 +21,7 @@ const NO_ACCESS: AccountAccess = {
 export class AccessService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Permissions come from the offices the account's member holds in a term
-   * that is running today (FR-022/023), read fresh from the database every
-   * time. Nothing is cached or put in the token, so an ended appointment
-   * stops granting access immediately.
-   */
+  /** Looks the account's member up, then resolves its access. */
   async forAccount(
     accountId: string,
     now = new Date(),
@@ -35,7 +30,19 @@ export class AccessService {
       where: { id: accountId },
       select: { member: { select: { id: true, clubId: true } } },
     });
-    const member = account?.member;
+    return this.forMember(account?.member ?? null, now);
+  }
+
+  /**
+   * Permissions come from the offices the member holds in a term that is
+   * running today (FR-022/023), read fresh from the database every time.
+   * Nothing is cached or put in the token, so an ended appointment stops
+   * granting access immediately.
+   */
+  async forMember(
+    member: { id: string; clubId: string } | null,
+    now = new Date(),
+  ): Promise<AccountAccess> {
     if (!member) return NO_ACCESS; // an account with no club has no permissions
 
     const today = nairobiMidnightUtc(now);

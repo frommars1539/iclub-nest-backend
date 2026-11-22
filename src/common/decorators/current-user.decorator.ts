@@ -1,16 +1,16 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { PublicUser } from '../../modules/users/users.select';
+import type { AuthUser } from '../../modules/auth/auth-user';
 
 /**
- * Injects the authenticated user (set by the active auth guard).
+ * Injects the authenticated user (set by the JWT strategy's validate()).
  * Pass a field name to get a single property: `@CurrentUser('id') userId: string`.
  */
 export const CurrentUser = createParamDecorator(
-  (field: keyof PublicUser | undefined, ctx: ExecutionContext) => {
+  (field: keyof AuthUser | undefined, ctx: ExecutionContext) => {
     const request = ctx
       .switchToHttp()
-      .getRequest<Request & { user?: PublicUser }>();
+      .getRequest<Request & { user?: AuthUser }>();
     return field ? request.user?.[field] : request.user;
   },
 );
