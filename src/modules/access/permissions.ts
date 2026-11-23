@@ -1,5 +1,6 @@
 export const PERMISSIONS = [
   'club.manage',
+  'members.view',
   'members.manage',
   'members.import',
   'leadership.manage',
@@ -22,12 +23,23 @@ const ACCESS_LEVELS = [
 
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 
-/** PROVISIONAL: mirrors the frontend's src/lib/permissions.ts; the team must approve it. */
+/**
+ * PROVISIONAL: mirrors the frontend's src/lib/permissions.ts; the team must
+ * approve it. Every office can read the roster (members.view); the
+ * administrator and officeholders (secretary, unit leaders) can also change
+ * it. Only the administrator can import a roster.
+ */
 export const LEVEL_PERMISSIONS: Record<AccessLevel, readonly Permission[]> = {
   administrator: PERMISSIONS,
-  treasurer: ['finance.view', 'finance.post'],
-  officeholder: ['activities.manage', 'attendance.record', 'records.manage'],
-  patron: ['finance.view'],
+  treasurer: ['members.view', 'finance.view', 'finance.post'],
+  officeholder: [
+    'members.view',
+    'members.manage',
+    'activities.manage',
+    'attendance.record',
+    'records.manage',
+  ],
+  patron: ['members.view', 'finance.view'],
 };
 
 const isAccessLevel = (value: string): value is AccessLevel =>

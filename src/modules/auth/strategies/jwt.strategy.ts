@@ -38,7 +38,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: { id: payload.sub },
       select: {
         ...publicUserSelect,
-        member: { select: { id: true, clubId: true } },
+        member: { select: { id: true, clubId: true, status: true } },
       },
     });
     // Token is valid but the account no longer exists.
