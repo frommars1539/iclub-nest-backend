@@ -14,6 +14,7 @@ import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
+import { HandoversModule } from './modules/handovers/handovers.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
     UsersModule,
     ClubsModule,
     InvitationsModule,
+    HandoversModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
