@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards';
 import { PasswordModule } from './password.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { LoginThrottleService } from './login-throttle.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   controllers: [AuthController],
   providers: [
     AuthService,
+    LoginThrottleService,
     JwtStrategy,
     // Order matters: authenticate first, then check permissions.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
