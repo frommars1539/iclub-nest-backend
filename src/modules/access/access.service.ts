@@ -10,6 +10,13 @@ export interface AccountAccess {
   offices: string[];
 }
 
+/** The slice of a Member that access depends on. */
+export interface MemberRef {
+  id: string;
+  clubId: string;
+  status: string;
+}
+
 const NO_ACCESS: AccountAccess = {
   memberId: null,
   clubId: null,
@@ -28,22 +35,32 @@ export class AccessService {
   ): Promise<AccountAccess> {
     const account = await this.prisma.userAccount.findUnique({
       where: { id: accountId },
-      select: { member: { select: { id: true, clubId: true } } },
+      select: { member: { select: { id: true, clubId: true, status: true } } },
     });
     return this.forMember(account?.member ?? null, now);
   }
 
   /**
-   * Permissions come from the offices the member holds in a term that is
-   * running today (FR-022/023), read fresh from the database every time.
-   * Nothing is cached or put in the token, so an ended appointment stops
-   * granting access immediately.
+   * Permissions come from the offices a member holds in a term running today
+   * (FR-022/023), and only while the member is ACTIVE. They are read fresh
+   * from the database on every request; nothing is cached or put in the
+   * token, so a status change or an ended appointment takes effect at once.
+   *
+   * A member who is not ACTIVE keeps their identity (memberId, clubId) but
+   * holds no permissions and no offices. The identity matters: the handover
+   * party rule authorises by identity, so an outgoing leader who has since
+   * been marked departed can still confirm their handover.
    */
   async forMember(
-    member: { id: string; clubId: string } | null,
+    member: MemberRef | null,
     now = new Date(),
   ): Promise<AccountAccess> {
     if (!member) return NO_ACCESS; // an account with no club has no permissions
+
+    const identity = { memberId: member.id, clubId: member.clubId };
+    if (member.status !== 'ACTIVE') {
+      return { ...identity, permissions: [], offices: [] };
+    }
 
     const today = nairobiMidnightUtc(now);
     const appointments = await this.prisma.appointment.findMany({
@@ -56,8 +73,7 @@ export class AccessService {
     });
 
     return {
-      memberId: member.id,
-      clubId: member.clubId,
+      ...identity,
       permissions: permissionsFor(
         appointments.map((a) => a.position.accessLevel),
       ),
