@@ -8,6 +8,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { publicUserSelect } from '../users/users.select';
 import { SignInDto, SignUpDto } from './dto';
+import { LoginThrottleService } from './login-throttle.service';
 import { PasswordService } from './password.service';
 import type { JwtPayload } from './strategies/jwt.strategy';
 
@@ -17,11 +18,12 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly passwords: PasswordService,
+    private readonly throttle: LoginThrottleService,
   ) {}
 
   /**
    * Creates a club-less account. The club (and the account's member) come
-   * from POST /clubs, or from accepting an invitation (step 5).
+   * from POST /clubs, or from accepting an invitation.
    */
   async signUp({ password, ...profile }: SignUpDto) {
     const passwordHash = await this.passwords.hash(password);
@@ -42,29 +44,28 @@ export class AuthService {
     }
   }
 
-  async signIn({ email, password }: SignInDto) {
+  async signIn({ email, password }: SignInDto, now = new Date()) {
+    // NFR-015: refuse before doing any work, even for the correct password.
+    await this.throttle.assertAllowed(email, now);
+
     const account = await this.prisma.userAccount.findUnique({
       where: { email },
     });
 
-    //Always run a full Argon2 verification, even when the email is unknown
-    //(it checks a decoy hash), so responsetime does not reveal which emails
+    // Always run a full Argon2 verification, even when the email is unknown
+    // (it checks a decoy hash), so response time doesn't reveal which emails
     // are registered. Same error either way.
-
     const valid = await this.passwords.verifyOrDecoy(
       account?.passwordHash,
       password,
     );
-
-    // Same error for unknown email and wrong password, to avoid account
-    // enumeration. (Timing still differs; step 3 fixes that.)
-    if (
-      !account ||
-      !(await this.passwords.verify(account.passwordHash, password))
-    ) {
+    if (!account || !valid) {
+      // Unknown emails count too, so a lock can't reveal which exist.
+      await this.throttle.recordFailure(email, now);
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    await this.throttle.reset(email);
     return this.signToken({ sub: account.id, email: account.email });
   }
 

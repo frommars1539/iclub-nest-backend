@@ -611,3 +611,15 @@ model CustodyEvent {
   @@index([handoverId])
   @@map("custody_events")
 }
+
+
+/// NFR-015: failed sign-in attempts. key_hash is a SHA-256 of the normalised
+/// email, so no email address is stored here.
+model LoginFailure {
+  id      String   @id @default(uuid())
+  keyHash String   @map("key_hash")
+  at      DateTime @default(now())
+
+  @@index([keyHash, at])
+  @@map("login_failures")
+}
