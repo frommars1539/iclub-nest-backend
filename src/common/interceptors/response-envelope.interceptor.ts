@@ -18,19 +18,17 @@ export class ResponseEnvelopeInterceptor implements NestInterceptor {
     if (context.getType() !== 'http') return next.handle();
 
     const message =
-      this.reflector.getAllAndOverride<string | undefined>(RESPONSE_MESSAGE_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]) ?? 'OK';
+      this.reflector.getAllAndOverride<string | undefined>(
+        RESPONSE_MESSAGE_KEY,
+        [context.getHandler(), context.getClass()],
+      ) ?? 'OK';
 
     return next.handle().pipe(
-      map(
-        (data: unknown): ApiSuccess<unknown> => ({
-          success: true,
-          data: data ?? null,
-          message,
-        }),
-      ),
+      map((data: unknown): ApiSuccess<unknown> => ({
+        success: true,
+        data: data ?? null,
+        message,
+      })),
     );
   }
 }

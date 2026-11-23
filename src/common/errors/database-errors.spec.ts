@@ -6,8 +6,14 @@ describe('mapDatabaseMessage', () => {
   it.each([
     ['payment exceeds the dues still owed', ErrorCode.DUES_OVERPAYMENT],
     ['financial year is closed', ErrorCode.YEAR_CLOSED],
-    ['UPDATE on ledger_entries is not allowed (append-only table)', ErrorCode.ENTRY_IMMUTABLE],
-    ['handover has items that are not marked yet', ErrorCode.HANDOVER_INCOMPLETE],
+    [
+      'UPDATE on ledger_entries is not allowed (append-only table)',
+      ErrorCode.ENTRY_IMMUTABLE,
+    ],
+    [
+      'handover has items that are not marked yet',
+      ErrorCode.HANDOVER_INCOMPLETE,
+    ],
     [
       'cross-club reference: members.unit_id points at a row of units that belongs to another club',
       ErrorCode.CROSS_CLUB_REFERENCE,

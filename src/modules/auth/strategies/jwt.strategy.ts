@@ -4,8 +4,11 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { EnvironmentVariables } from '../../../config/env.validation';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { publicUserSelect, type PublicUser } from '../../users/users.select';
+import { AccessService } from '../../access/access.service';
+import { publicUserSelect } from '../../users/users.select';
+import type { AuthUser } from '../auth-user';
 
+/** Identity only. Permissions are never in the token (SRS FR-022/023). */
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -16,6 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     config: ConfigService<EnvironmentVariables, true>,
     private readonly prisma: PrismaService,
+    private readonly access: AccessService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -24,14 +28,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  /** The return value is attached to `request.user`. */
-  async validate(payload: JwtPayload): Promise<PublicUser> {
-    const user = await this.prisma.user.findUnique({
+  /**
+   * Passport calls this only after the signature and expiry check out. It
+   * runs on every authenticated request, so what it returns (attached to
+   * `request.user`) is always the caller's CURRENT access.
+   */
+  async validate(payload: JwtPayload): Promise<AuthUser> {
+    const account = await this.prisma.userAccount.findUnique({
       where: { id: payload.sub },
-      select: publicUserSelect,
+      select: {
+        ...publicUserSelect,
+        member: { select: { id: true, clubId: true } },
+      },
     });
-    // Token is valid but the user has since been deleted.
-    if (!user) throw new UnauthorizedException();
-    return user;
+    // Token is valid but the account no longer exists.
+    if (!account) throw new UnauthorizedException();
+
+    const { member, ...user } = account;
+    const access = await this.access.forMember(member);
+    return { ...user, ...access };
   }
 }

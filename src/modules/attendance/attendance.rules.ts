@@ -20,14 +20,14 @@ export interface ActivityWindow {
  */
 
 export function isMarkingOpen(activity: ActivityWindow, now: Date): boolean {
-    if (activity.status === 'CANCELLED') {
-        return false;
-    }
+  if (activity.status === 'CANCELLED') {
+    return false;
+  }
 
-    const opensAt =
-       activity.startsAt.getTime() - MARKING_OPENS_MINUTES_BEFORE * 60_000;
+  const opensAt =
+    activity.startsAt.getTime() - MARKING_OPENS_MINUTES_BEFORE * 60_000;
 
-    return now.getTime() >= opensAt;
+  return now.getTime() >= opensAt;
 }
 
 /** A change made after the activity has ended is an amendment (FR-033). */

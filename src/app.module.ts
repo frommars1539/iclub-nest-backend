@@ -12,6 +12,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ClubsModule } from './modules/clubs/clubs.module';
+import { InvitationsModule } from './modules/invitations/invitations.module';
+import { HandoversModule } from './modules/handovers/handovers.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { PrismaModule } from './prisma/prisma.module';
     HealthModule,
     AuthModule,
     UsersModule,
+    ClubsModule,
+    InvitationsModule,
+    HandoversModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

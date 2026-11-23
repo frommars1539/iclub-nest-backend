@@ -8,17 +8,26 @@ const activity = {
 
 describe('isMarkingOpen', () => {
   it('is closed 21 minutes before start', () => {
-    expect(isMarkingOpen(activity, new Date('2026-12-01T09:39:00Z'))).toBe(false);
+    expect(isMarkingOpen(activity, new Date('2026-12-01T09:39:00Z'))).toBe(
+      false,
+    );
   });
   it('is open exactly 20 minutes before start', () => {
-    expect(isMarkingOpen(activity, new Date('2026-12-01T09:40:00Z'))).toBe(true);
+    expect(isMarkingOpen(activity, new Date('2026-12-01T09:40:00Z'))).toBe(
+      true,
+    );
   });
   it('is open after the activity ends', () => {
-    expect(isMarkingOpen(activity, new Date('2026-12-01T12:00:00Z'))).toBe(true);
+    expect(isMarkingOpen(activity, new Date('2026-12-01T12:00:00Z'))).toBe(
+      true,
+    );
   });
   it('is never open for a cancelled activity', () => {
     expect(
-      isMarkingOpen({ ...activity, status: 'CANCELLED' }, new Date('2026-12-01T10:30:00Z')),
+      isMarkingOpen(
+        { ...activity, status: 'CANCELLED' },
+        new Date('2026-12-01T10:30:00Z'),
+      ),
     ).toBe(false);
   });
 });
