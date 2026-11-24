@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { nairobiMidnightUtc } from '../../common/nairobi-date';
 import { PrismaService } from '../../prisma/prisma.service';
 import { permissionsFor, type Permission } from './permissions';
+import { resolveUnitScope, type UnitScope } from './unit-scope.rules';
 
 export interface AccountAccess {
   memberId: string | null;
@@ -79,5 +80,32 @@ export class AccessService {
       ),
       offices: appointments.map((a) => a.position.name),
     };
+  }
+
+  /**
+   * The members this caller may act on for one permission(roster changes,
+   * attendance marking). Read frsh on each call and only fro ACTIVE members.
+   * Callers use it on writes only, so reads pay nothing.
+   */
+
+  async unitScopeFor(
+    memberId: string,
+    permission: Permission,
+    now = new Date(),
+  ): Promise<UnitScope> {
+    const today = nairobiMidnightUtc(now);
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        memberId,
+        endedAt: null,
+        member: { status: 'ACTIVE' },
+        term: { startDate: { lte: today }, endDate: { gte: today } },
+      },
+      select: { position: { select: { accessLevel: true, unitId: true } } },
+    });
+    return resolveUnitScope(
+      appointments.map((a) => a.position),
+      permission,
+    );
   }
 }
