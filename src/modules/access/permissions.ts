@@ -57,3 +57,8 @@ export function permissionsFor(levels: readonly string[]): Permission[] {
   }
   return [...granted];
 }
+
+/** True when this access level grants the permission. An unknown level grants nothing. */
+export function levelGrants(level: string, permission: Permission): boolean {
+  return isAccessLevel(level) && LEVEL_PERMISSIONS[level].includes(permission);
+}
