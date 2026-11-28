@@ -15,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ClubsModule } from './modules/clubs/clubs.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { HandoversModule } from './modules/handovers/handovers.module';
+import { MembersModule } from './modules/members/members.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { HandoversModule } from './modules/handovers/handovers.module';
     ClubsModule,
     InvitationsModule,
     HandoversModule,
+    MembersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

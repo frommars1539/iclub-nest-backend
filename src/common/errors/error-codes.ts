@@ -62,6 +62,10 @@ export const ErrorCode = {
   INVITATION_USED: 'INVITATION_USED',
   MEMBER_HAS_ACCOUNT: 'MEMBER_HAS_ACCOUNT',
   EMAIL_TAKEN: 'EMAIL_TAKEN',
+
+  // Members
+  MEMBER_HOLDS_OFFICE: 'MEMBER_HOLDS_OFFICE',
+  MEMBER_NUMBER_TAKEN: 'MEMBER_NUMBER_TAKEN',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
